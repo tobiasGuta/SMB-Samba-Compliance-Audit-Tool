@@ -225,6 +225,18 @@ python3 smb_audit.py 10.0.0.5 -u admin -p Pass1 --shares --policy --vulns --json
 
 ---
 
+## Screenshot
+
+<img width="1765" height="464" alt="image" src="https://github.com/user-attachments/assets/01975e4f-98ec-45ea-9fb1-0b118bcb3187" />
+
+<img width="1762" height="542" alt="image" src="https://github.com/user-attachments/assets/36182697-2c57-4f83-9739-491e2a5985c3" />
+
+<img width="1766" height="573" alt="image" src="https://github.com/user-attachments/assets/d9be73d4-aef9-4407-9411-a34c57c5c700" />
+
+<img width="1765" height="559" alt="image" src="https://github.com/user-attachments/assets/801f9362-c09b-48b1-a523-109a87b9f0b6" />
+
+<img width="1765" height="671" alt="image" src="https://github.com/user-attachments/assets/2e051e14-7993-4cb4-af5f-f5856e975ca7" />
+
 ## Output
 
 The tool prints a structured report to the terminal:
