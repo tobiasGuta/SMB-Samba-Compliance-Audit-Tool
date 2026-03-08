@@ -1,6 +1,6 @@
 # SMB Audit Tool
 
-A command-line SMB/Samba compliance and audit tool built on top of [impacket](https://github.com/fortra/impacket). It connects to a target over SMB, enumerates shares, tests read/write permissions, retrieves password policies, discovers users and groups, identifies active sessions, spiders for sensitive files, runs vulnerability heuristics, and can view remote files directly in the terminal -- all from a single script.
+A command-line SMB/Samba compliance and audit tool built on top of [impacket](https://github.com/fortra/impacket). It connects to a target over SMB, enumerates shares, tests read/write permissions, retrieves password policies, discovers users and groups, identifies active sessions, spiders for sensitive files, runs vulnerability heuristics, and can view remote files directly in the terminal all from a single script.
 
 Output is rendered with [rich](https://github.com/Textualize/rich) tables, panels, and trees. Findings can also be exported to structured JSON for further processing.
 
@@ -8,18 +8,18 @@ Output is rendered with [rich](https://github.com/Textualize/rich) tables, panel
 
 ## Features
 
-- **Share enumeration and permission auditing** -- lists every share and tests read/write access.
-- **Password policy retrieval** -- queries minimum length, complexity, lockout thresholds via SAMR.
-- **User and group enumeration** -- discovers local accounts and group memberships via SAMR.
-- **Active session enumeration** -- lists connected users, source IPs, and idle times via SRVSVC.
-- **Backup / sensitive file discovery (spider)** -- recursively walks shares matching a regex for high-value files (.bak, .sql, .kdbx, .pem, .key, id_rsa, web.config, etc.).
-- **Auto-download** -- optionally downloads matched files under a configurable size limit.
-- **Vulnerability heuristics** -- flags NTLM relay risk (signing disabled), MS17-010 (SMBv1), and CVE-2020-0796 / SMBGhost (SMBv3.1.1).
-- **Remote file viewer** -- view a remote file in the terminal with syntax highlighting (--cat).
-- **SMB dialect and signing detection** -- detects the negotiated dialect and whether signing is enforced.
-- **Multiple auth methods** -- password, NTLM pass-the-hash, null session, and guest login.
-- **Threaded spidering** -- concurrent share crawling for faster results.
-- **JSON export** -- structured output for integration with other tools or reporting pipelines.
+- **Share enumeration and permission auditing** lists every share and tests read/write access.
+- **Password policy retrieval** queries minimum length, complexity, lockout thresholds via SAMR.
+- **User and group enumeration** discovers local accounts and group memberships via SAMR.
+- **Active session enumeration** lists connected users, source IPs, and idle times via SRVSVC.
+- **Backup / sensitive file discovery (spider)** recursively walks shares matching a regex for high-value files (.bak, .sql, .kdbx, .pem, .key, id_rsa, web.config, etc.).
+- **Auto-download** optionally downloads matched files under a configurable size limit.
+- **Vulnerability heuristics** flags NTLM relay risk (signing disabled), MS17-010 (SMBv1), and CVE-2020-0796 / SMBGhost (SMBv3.1.1).
+- **Remote file viewer** view a remote file in the terminal with syntax highlighting (--cat).
+- **SMB dialect and signing detection** detects the negotiated dialect and whether signing is enforced.
+- **Multiple auth methods** password, NTLM pass-the-hash, null session, and guest login.
+- **Threaded spidering** concurrent share crawling for faster results.
+- **JSON export** structured output for integration with other tools or reporting pipelines.
 
 ---
 
@@ -241,15 +241,15 @@ python3 smb_audit.py 10.0.0.5 -u admin -p Pass1 --shares --policy --vulns --json
 
 The tool prints a structured report to the terminal:
 
-- **Header panel** -- target, negotiated dialect, signing status (with risk annotations), auth method, timestamp.
-- **Shares table** -- share name, type/remark, read and write access.
-- **Password policy table** -- minimum length, complexity, lockout settings. Risky values are highlighted.
-- **Users table** -- RID, username, active/disabled status. Large domains show a summary panel instead.
-- **Groups table** -- RID, group name, member SIDs.
-- **Sessions table** -- username, source machine, active and idle times.
-- **Spider tree** -- matched sensitive files grouped by share, with download status.
-- **All files tree** -- full directory listing when `--list-files` is active.
-- **Vulnerability table** -- detected issues with severity and remediation guidance.
+- **Header panel** target, negotiated dialect, signing status (with risk annotations), auth method, timestamp.
+- **Shares table** share name, type/remark, read and write access.
+- **Password policy table** minimum length, complexity, lockout settings. Risky values are highlighted.
+- **Users table**  RID, username, active/disabled status. Large domains show a summary panel instead.
+- **Groups table**  RID, group name, member SIDs.
+- **Sessions table**  username, source machine, active and idle times.
+- **Spider tree**  matched sensitive files grouped by share, with download status.
+- **All files tree**  full directory listing when `--list-files` is active.
+- **Vulnerability table** detected issues with severity and remediation guidance.
 
 When `--json` is specified, the same data is written to a structured JSON file.
 
