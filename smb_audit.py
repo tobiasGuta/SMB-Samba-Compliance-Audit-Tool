@@ -267,8 +267,8 @@ def build_argparser() -> argparse.ArgumentParser:
     # -- Performance ------------------------------------------------------
     perf = parser.add_argument_group("performance")
     perf.add_argument(
-        "--threads", type=int, default=4,
-        help="Threads for concurrent share spidering (default: 4).",
+        "--threads", type=int, default=1,
+        help="Threads for concurrent share spidering (default: 1). Note: Impacket SMB hooks are not thread-safe, so >1 may cause dropped connections.",
     )
 
     # -- Output -----------------------------------------------------------
